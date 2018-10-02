@@ -90,17 +90,9 @@ foreach ($file in $files){
 		$Directory = $destination + "\" + $year + "\" + $month + "\" + $day
 	}
 	
-	#$ConfirmPreference = 'None'
-	
-	
 	# Create directory if it doesn't exsist
-	if (!(Test-Path $Directory))
-	{
-		#New-Item $directory -type directory -Confirm "False"
-		#-ErrorAction SilentlyContinue -Confirm:$false  -Recurse
+	if (!(Test-Path $Directory)){
 		New-Item -ItemType Directory -Path $directory -Force:$true | Out-Null
-		#md $Directory
-		#mkdir "c:\test2200" #$Directory
 	}
 	 
 	# Move File to new location

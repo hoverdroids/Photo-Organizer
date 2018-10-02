@@ -10,4 +10,4 @@ ls "$SCRIPTPATH\Scripts\*.ps1" | %{
 Remove-Item "$SCRIPTPATH\Scripts\Progress.exe*"
 Remove-Item "$SCRIPTPATH\Scripts\ScreenBuffer-GUI.exe*"
 
-$NULL = Read-Host "Press enter to exit"
+#$NULL = Read-Host "Press enter to exit"
