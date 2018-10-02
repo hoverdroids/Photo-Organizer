@@ -8,13 +8,20 @@ $structures = [System.Management.Automation.Host.ChoiceDescription[]](
 $Grouping = $host.ui.PromptForChoice('Bulk File Organizer', "Select Output Folder Structure", $structures, 2)
 
 if($Grouping -eq 0 -or $Grouping -eq 2){
-#Determine the folder structure to create
-$formats = [System.Management.Automation.Host.ChoiceDescription[]](
-(New-Object System.Management.Automation.Host.ChoiceDescription "&DD-MM-YYYY","DD-MM-YYYY"),
-(New-Object System.Management.Automation.Host.ChoiceDescription "&MM-DD-YYYY","MM-DD-YYYY"),
-(New-Object System.Management.Automation.Host.ChoiceDescription "&YYYY-DD-MM","YYYY-DD-MM"),
-(New-Object System.Management.Automation.Host.ChoiceDescription "&YYYY-MM-DD","YYYY-MM-DD"))
-$Format = $host.ui.PromptForChoice('Bulk File Organizer', "Select Date Format", $formats, 0)
+	#Determine the folder structure to create
+	$formats = [System.Management.Automation.Host.ChoiceDescription[]](
+	(New-Object System.Management.Automation.Host.ChoiceDescription "&DD-MM-YYYY","DD-MM-YYYY"),
+	(New-Object System.Management.Automation.Host.ChoiceDescription "&MM-DD-YYYY","MM-DD-YYYY"),
+	(New-Object System.Management.Automation.Host.ChoiceDescription "&YYYY-DD-MM","YYYY-DD-MM"),
+	(New-Object System.Management.Automation.Host.ChoiceDescription "&YYYY-MM-DD","YYYY-MM-DD"))
+	$Format = $host.ui.PromptForChoice('Bulk File Organizer', "Select Date Format", $formats, 1)
+
+	#Determine the folder structure to create
+	$datesources = [System.Management.Automation.Host.ChoiceDescription[]](
+	(New-Object System.Management.Automation.Host.ChoiceDescription "&File Name","File Name"),
+	(New-Object System.Management.Automation.Host.ChoiceDescription "&Date Created","Date Created"),
+	(New-Object System.Management.Automation.Host.ChoiceDescription "&Date Modified","Date Modified"))
+	$DateSource = $host.ui.PromptForChoice('Bulk File Organizer', "Select Date Source", $datesources, 0)
 }
 
 #Determine where the images are that need to be sorted
@@ -37,48 +44,66 @@ if(!(Test-Path $source)){
 # Get the files which should be moved, without folders
 $files = Get-ChildItem $source -Recurse | where {!$_.PsIsContainer}
   
-foreach ($file in $files)
-{
-# Get year and Month of the file using the filename
-$bn = $file.basename.ToString()
+foreach ($file in $files){
+	# Get year and Month of the file using the filename
+	$bn = $file.basename.ToString()
 
-$year = $bn.substring(0,4)
-$month = $bn.substring(4,2)
-$day = $bn.substring(6,2)
+	#Get date source preferences
+	if(!($DateSource)){
+		$year = $bn.substring(0,4)
+		$month = $bn.substring(4,2)
+		$day = $bn.substring(6,2)
+	}elseif($DateSource -eq 1){
+		$year = $file.LastWriteTime.Year.ToString()
+		$month = $file.LastWriteTime.Month.ToString()
+		$day = $file.LastWriteTime.Day.ToString()
+		$hour = $file.LastWriteTime.Hour.ToString()
+	}elseif($DateSource -eq 2){
+		$year = $file.CreationTime.Year.ToString()
+		$month = $file.CreationTime.Month.ToString()
+		$day = $file.CreationTime.Day.ToString()
+		$hour = $file.CreationTime.Hour.ToString()
+	}
 
-# Set Directory Path
+	#Get date preferences if they exist - which is only when the option uses dates for folder names
+	if(!($Format)){
+		#This catches null and empty format as well as format selection of 0
+		$Date = $day + "-" + $month + "-" + $year
+	}elseif($Format -eq 1){
+		$Date = $month + "-" + $day + "-" + $year
+	}elseif($Format -eq 2){
+		$Date = $year + "-" + $day + "-" + $month
+	}elseif($Format -eq 3){
+		$Date = $year + "-" + $month + "-" + $day
+	}
 
-#Get date preferences if they exist - which is only when the option uses dates for folder names
-if(!($Format)){
-	#This catches null and empty format as well as format selection of 0
-	$Date = $day + "-" + $month + "-" + $year
-}elseif($Format -eq 1){
-	$Date = $month + "-" + $day + "-" + $year
-}elseif($Format -eq 2){
-	$Date = $year + "-" + $day + "-" + $month
-}elseif($Format -eq 3){
-	$Date = $year + "-" + $month + "-" + $day
+	#Create the full directory name using grouping and date preferences
+	if($Grouping -eq 0){
+		$Directory = $destination + "\" + $Date
+	}elseif($Grouping -eq 1){
+		$Directory = $destination + "\" + $year
+	}elseif($Grouping -eq 2){
+		$Directory = $destination + "\" + $year + "\" + $Date
+	}elseif($Grouping -eq 3){
+		$Directory = $destination + "\" + $year + "\" + $month
+	}elseif($Grouping -eq 4){
+		$Directory = $destination + "\" + $year + "\" + $month + "\" + $day
+	}
+	
+	#$ConfirmPreference = 'None'
+	
+	
+	# Create directory if it doesn't exsist
+	if (!(Test-Path $Directory))
+	{
+		#New-Item $directory -type directory -Confirm "False"
+		#-ErrorAction SilentlyContinue -Confirm:$false  -Recurse
+		New-Item -ItemType Directory -Path $directory -Force:$true | Out-Null
+		#md $Directory
+		#mkdir "c:\test2200" #$Directory
+	}
+	 
+	# Move File to new location
+	$file | Move-Item -Destination $Directory
 }
-
-#Create the full directory name using grouping and date preferences
-if($Grouping -eq 0){
-	$Directory = $destination + "\" + $Date
-}elseif($Grouping -eq 1){
-	$Directory = $destination + "\" + $year
-}elseif($Grouping -eq 2){
-	$Directory = $destination + "\" + $year + "\" + $Date
-}elseif($Grouping -eq 3){
-	$Directory = $destination + "\" + $year + "\" + $month
-}elseif($Grouping -eq 4){
-	$Directory = $destination + "\" + $year + "\" + $month + "\" + $day
-}
-
-# Create directory if it doesn't exsist
-if (!(Test-Path $Directory))
-{
-New-Item $directory -type directory
-}
- 
-# Move File to new location
-$file | Move-Item -Destination $Directory
-}
+#$NULL = Read-Host "Press enter to exit"
